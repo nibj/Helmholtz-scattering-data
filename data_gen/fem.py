@@ -102,7 +102,7 @@ def discretize_born(k, xlim, phi, Ngrid, theta, RT, RM):
     from scipy.special import hankel1
     vert_step = 2 * xlim / Ngrid  # Vertical discretization step size
     hor_step = 2 * xlim / Ngrid  # Horizontal discretization step size
-    if RM.eq.np.inf:
+    if RM==np.inf:
         Cfac = vert_step * hor_step * np.exp(1j * np.pi / 4) * np.sqrt(k**3 / (np.pi * 8))  # Compute constant factor
     else:
         Cfac=vert_step * hor_step
@@ -151,4 +151,5 @@ def discretize_born(k, xlim, phi, Ngrid, theta, RT, RM):
                 rcv=1j/4*hankel1(0,k*np.linalg.norm(grid_points[iy,:]-xM[iz,:]))
         Exp=rcv*src
     A = Cfac * Exp # Discretize born operator
+    print("A shape:", A.shape)
     return A

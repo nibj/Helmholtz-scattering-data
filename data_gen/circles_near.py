@@ -152,12 +152,16 @@ def do_iteration(iter_args):
                             inc_field, 
                             params.Ngrid, 
                             theta, 
-                            RT,
-                            RM
+                            params.RT,
+                            params.RM
                             ) 
                           for inc_field in phi
                         ]
     born = np.vstack(born_operator_list)
+
+    print("born shape:", born.shape)
+    print("umeas shape:", umeas.shape)
+
     m_approx = lsqr(born, umeas, damp=1e0)[0] # Dampening can be changed
 
     logging.info('    Solved Inverse Problem')
@@ -215,7 +219,7 @@ class Parameters:
         self.pml_parameter = kwargs.get('pml_parameter', 1j) # Absorbption coefficient in PML
         # measurement and transmitter circels must contain all the scatterers 
         self.RT = kwargs.get('RT', np.inf) # Radius of transmitter circle
-        self.RM = kwargs.get('RM',np.inf)  # Radius of measurment circle
+        self.RM = kwargs.get('RM', np.inf)  # Radius of measurment circle
 
         # Image generation:
         self.should_plot = bool(kwargs.get('should_plot', False))
@@ -440,6 +444,7 @@ if __name__ == '__main__':
                         Idx_sample=cli_args.base_index,
                         N_sample=cli_args.N_sample,
                         N_sample_max=cli_args.N_sample_max)
+
 
 
     #------------------------INITIALIZE HDF5 DATA FILE------------------------------------------------
