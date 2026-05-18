@@ -140,8 +140,8 @@ def do_iteration(iter_args):
     logging.info('    Mesh and Matrix Done')
 
     #------------SOLVE FORWARD PROBLEM FOR FAR FIELD PATTERN----------------------------
-    uinf, phi, theta = fem.helmsol(mesh, params.porder, ncoef, params.kappa, params.inc_p, params.far_p)
-    uinf = uinf.flatten() # Flatten for storage and inversion
+    umeas, phi, theta = fem.helmsol(mesh, params.porder, ncoef, params.kappa, params.inc_p, params.far_p)
+    umeas = umeas.flatten() # Flatten for storage and inversion
 
     logging.info('    Solved Forward Problem')
 
@@ -151,12 +151,14 @@ def do_iteration(iter_args):
                             params.xlim, 
                             inc_field, 
                             params.Ngrid, 
-                            theta
+                            theta, 
+                            RT,
+                            RM
                             ) 
                           for inc_field in phi
                         ]
     born = np.vstack(born_operator_list)
-    m_approx = lsqr(born, uinf, damp=1e0)[0] # Dampening can be changed
+    m_approx = lsqr(born, umeas, damp=1e0)[0] # Dampening can be changed
 
     logging.info('    Solved Inverse Problem')
 
@@ -165,7 +167,7 @@ def do_iteration(iter_args):
     log_memory_usage()
 
     #------------RETURN THE RESULTS----------------------------------
-    return (i, image, m_approx, uinf)
+    return (i, image, m_approx, umeas)
 
 
 #----------------------------INITIALIZE PARAMETERS--------------------------------------------------------
@@ -210,9 +212,10 @@ class Parameters:
                                 1 + 2 * 2 * np.pi / self.kappa)
         self.pml_delta = kwargs.get('pml_delta',    # Thickness of the PML
                                 2 * np.pi / self.kappa)
-        self.pml_width = kwargs.get('pml_delta',    # Thickness of the PML (again)
-                                2 * np.pi / self.kappa)
         self.pml_parameter = kwargs.get('pml_parameter', 1j) # Absorbption coefficient in PML
+        # measurement and transmitter circels must contain all the scatterers 
+        self.RT = kwargs.get('RT', np.inf) # Radius of transmitter circle
+        self.RM = kwargs.get('RM',np.inf)  # Radius of measurment circle
 
         # Image generation:
         self.should_plot = bool(kwargs.get('should_plot', False))
@@ -246,9 +249,11 @@ P A R A M E T E R    S U M M A R Y
             ninc = {self.ninc},
             n = {self.inc_p['n']}, app = {self.inc_p['app']}, cent = {self.inc_p['cent']}
 
-        Far field:
+        Output field measurements:
             nfar = {self.nfar},
             n = {self.far_p['n']}, app = {self.far_p['app']}, cent = {self.far_p['cent']}
+            RM = {self.RM}
+            RT = {self.RT}
 
     Computed constants:
 
@@ -538,7 +543,7 @@ if __name__ == '__main__':
     # modify this Python code or pass arguments to it.
     #
     n_workers = int(os.getenv('SLURM_CPUS_ON_NODE', 1))
-    n_workers = 2 # Modify according to CPU power
+    n_workers = 3 # Modify according to CPU power
     logging.info(f'Entering computational loop with {params.N_sample} sample(s) across {n_workers} worker(s)')
 
     if n_workers > 1:
@@ -554,7 +559,7 @@ if __name__ == '__main__':
             # and a list of N_sample params object references are merged into a single list of
             # tuples (index_i, params) using zip().
             #
-            for (i, image, m_approx, uinf) in pool.map(do_iteration, zip(range(params.N_sample), [params]*params.N_sample)):
+            for (i, image, m_approx, umeas) in pool.map(do_iteration, zip(range(params.N_sample), [params]*params.N_sample)):
                 # Write results to disk:
                 file_idx = i + params.Idx_sample
                 image_ds[:, file_idx] = image
@@ -563,8 +568,8 @@ if __name__ == '__main__':
                 approx_ds[:, file_idx] = np.real(m_approx)
                 logging.info('    Wrote approx[%d] to disk', file_idx)
 
-                farfield_real_ds[:, file_idx] = np.real(uinf)
-                farfield_imag_ds[:, file_idx] = np.imag(uinf)
+                farfield_real_ds[:, file_idx] = np.real(umeas)
+                farfield_imag_ds[:, file_idx] = np.imag(umeas)
                 logging.info('    Wrote farfield[%d] to disk', file_idx)
 
                 # Plot if necessary -- WARNING, this segfaults for me!
@@ -583,7 +588,7 @@ if __name__ == '__main__':
             gc.collect()
 
             # Generate the next results set:
-            (i, image, m_approx, uinf, epsilon, tau, uinf_born)= do_iteration((i, params))
+            (i, image, m_approx,umeas, epsilon, tau, umeas_born)= do_iteration((i, params))
 
             # Write results to disk:
             file_idx = i + params.Idx_sample
@@ -593,8 +598,8 @@ if __name__ == '__main__':
             approx_ds[:, file_idx] = np.real(m_approx)
             logging.info('    Wrote approx[%d] to disk', file_idx)
 
-            farfield_real_ds[:, file_idx] = np.real(uinf)
-            farfield_imag_ds[:, file_idx] = np.imag(uinf)
+            farfield_real_ds[:, file_idx] = np.real(umeas)
+            farfield_imag_ds[:, file_idx] = np.imag(umeas)
             logging.info('    Wrote farfield[%d] to disk', file_idx)
 
             # Plot if necessary -- WARNING, this segfaults for me!
