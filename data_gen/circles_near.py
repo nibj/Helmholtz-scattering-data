@@ -27,7 +27,7 @@ import argparse
 import fem
 import custom_mesh
 import matrix_form
-
+ngsglobals.msg_level = 0
 #----------------------HELPER FUNCTIONS---------------------------------------------------------
 # Format byte count to human-readable form:
 def bytes_hr(byte_count, ignore_non_prefixed=True):
@@ -196,15 +196,21 @@ class Parameters:
         # Wave parameters:
         self.ninc = kwargs.get('ninc', 100)          # Number of incident fields, should be >2kR
         self.nfar = kwargs.get('nfar', 100)          # Number of far fields
+
+        self.RT = kwargs.get('RT', 3) # Radius of transmitter circle
+        self.RM = kwargs.get('RM', 3)# Radius of measurment circle
+
         self.inc_p = kwargs.get('inc_p',
                     { "n":self.ninc,                # Parameters for incident wave
                       "app":2*np.pi,
-                      "cent":0
+                      "cent":0,
+                      "RT":self.RT
                     })
         self.far_p = kwargs.get('far_p',            # Parameters for measurement
                     { "n":self.nfar,
                       "app":self.inc_p["app"],
-                      "cent":0
+                      "cent":0,
+                      "RM":self.RM
                     })
         self.kappa = kwargs.get('kappa', 16)        # Wavenumber
         self.porder = kwargs.get('porder', 4)       # Order of the polynmials in the FEM
@@ -218,8 +224,7 @@ class Parameters:
                                 2 * np.pi / self.kappa)
         self.pml_parameter = kwargs.get('pml_parameter', 1j) # Absorbption coefficient in PML
         # measurement and transmitter circels must contain all the scatterers 
-        self.RT = kwargs.get('RT', np.inf) # Radius of transmitter circle
-        self.RM = kwargs.get('RM', np.inf)  # Radius of measurment circle
+        
 
         # Image generation:
         self.should_plot = bool(kwargs.get('should_plot', False))
@@ -283,11 +288,13 @@ P A R A M E T E R    S U M M A R Y
         self.inc_p['n'] = hdf5_grp.attrs['inc_param.n']
         self.inc_p['app'] = hdf5_grp.attrs['inc_param.app']
         self.inc_p['cent'] = hdf5_grp.attrs['inc_param.cent']
+        self.far_p['RT'] = hdf5_grp.attrs['far_param.RT']
 
         self.far_p['n'] = hdf5_grp.attrs['far_param.n']
         self.far_p['app'] = hdf5_grp.attrs['far_param.app']
         self.far_p['cent'] = hdf5_grp.attrs['far_param.cent']
-
+        self.far_p['RM'] = hdf5_grp.attrs['far_param.RM']
+        
         self.kappa = hdf5_grp.attrs['kappa']
         self.porder = hdf5_grp.attrs['porder']
 
@@ -310,11 +317,13 @@ P A R A M E T E R    S U M M A R Y
         hdf5_grp.attrs['inc_param.n'] = self.inc_p['n']
         hdf5_grp.attrs['inc_param.app'] = self.inc_p['app']
         hdf5_grp.attrs['inc_param.cent'] = self.inc_p['cent']
+        hdf5_grp.attrs['far_param.RT'] = self.inc_p['RT'] 
 
         hdf5_grp.attrs['far_param.n'] = self.far_p['n']
         hdf5_grp.attrs['far_param.app'] = self.far_p['app']
         hdf5_grp.attrs['far_param.cent'] = self.far_p['cent']
-
+        hdf5_grp.attrs['far_param.RM'] = self.far_p['RM']
+        
         hdf5_grp.attrs['kappa'] = self.kappa
         hdf5_grp.attrs['porder'] = self.porder
 
@@ -568,7 +577,7 @@ if __name__ == '__main__':
                 # Write results to disk:
                 file_idx = i + params.Idx_sample
                 image_ds[:, file_idx] = image
-                logging.info('    Wrote image[%d] to disk', file_idx)
+                logging.info('    Wrote image[lsq%d] to disk', file_idx)
 
                 approx_ds[:, file_idx] = np.real(m_approx)
                 logging.info('    Wrote approx[%d] to disk', file_idx)
