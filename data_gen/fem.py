@@ -114,8 +114,9 @@ def helmsol(mesh,porder,ncoef,kappa,incp,farp):
                 rrad=CoefficientFunction(sqrt((x-zp[0])**2+(y-zp[1])**2))
                 ui=(1j/4.)*ngs.hankel1(v=0,z=kappa*rrad)
             b += SymbolicLFI(kappa*kappa*(ncoef-1)*ui * v)
-            b.Assemble()
-            gfu.vec.data =  Ainv * b.vec
+            with TaskManager():
+                b.Assemble()
+                gfu.vec.data =  Ainv * b.vec
             #Redraw()
             if farp["RM"]==np.inf:
                 umeas[:,ip],phi=farf2d(gfu,mesh,farp,kappa,porder)
