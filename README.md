@@ -11,6 +11,8 @@ https://arxiv.org/abs/2503.01596
 
 The main script, `circles.py`, simulates wave scattering from randomly generated circular inhomogeneities embedded in a homogeneous background. The forward problem is solved using the finite element method (FEM) via NGSolve, and synthetic far-field patterns are generated for a variety of incident fields. These far-field data are stored along with the ground-truth scatterer and its Born approximation reconstruction.
 
+The script circle_near.py computes near field scattering data as well as the Born approximation matrix in the near field.
+
 The code is modular and extensible to support various scatterer geometries, including ellipses, blobs, L-shapes, U-shapes, Shepp-Logan phantoms, and more--all of which are readily available in the `matrix_form.py` and `custom_mesh.py` files.
 
 ---
